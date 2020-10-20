@@ -15,11 +15,11 @@ public:
     ~Calculator();
     void set_input(string expr);
     void calculate(); // calculate reverse polish expression
-    void parse_expr(string expr);
+    
     double get_output(){ return _output; }
 
 private:
-
+    void parse_expr(string expr);
     bool isop(char op);
     bool compare_op(char op1, char op2);
     int opclass(char op);
@@ -27,7 +27,7 @@ private:
     double Gamma(double xx);
     double simple_cal(double x, double y, char op);
     double func_cal(double x,string func);
-    double cal_repolish(queue<string> q);
+    double cal_repolish(queue<string>& q);
     string char2string(char op);
     string _input;
     double _output;

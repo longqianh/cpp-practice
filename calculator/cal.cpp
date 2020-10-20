@@ -4,17 +4,20 @@ using namespace std;
 Calculator::Calculator():_output(0){}
 Calculator::~Calculator(){}
 
+
 void Calculator::set_input(string expr)
 {
 	_input=expr;
 }
 
-
+// 运算符号判断
 bool Calculator::isop(char op)
 {
 	return op=='+'||op=='-'||op=='*'||op=='/'||op=='^';
 }
 
+
+// 运算符优先级判断
 int Calculator::opclass(char op)
 {
 
@@ -27,6 +30,13 @@ int Calculator::opclass(char op)
 	}
 }
 
+// 运算符优先级比较
+bool Calculator::compare_op(char op1,char op2)
+{
+	return(opclass(op1)>opclass(op2));
+}
+
+// 运算符类型转换
 string Calculator::char2string(char op)
 {
 	switch(op)
@@ -41,11 +51,8 @@ string Calculator::char2string(char op)
 	}
 }
 
-bool Calculator::compare_op(char op1,char op2)
-{
-	return(opclass(op1)>opclass(op2));
-}
 
+// 表达式正确性判断
 bool Calculator::verify(string expr)
 {
 	int tmpl,tmpr=0;
@@ -76,8 +83,8 @@ bool Calculator::verify(string expr)
 
 
 
-
-double Calculator::Gamma(double xx) // 浮点数阶乘
+// 浮点数阶乘
+double Calculator::Gamma(double xx) 
 {
 	double x, y, tmp, ser;
     double cof[] = {76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5};
@@ -96,6 +103,7 @@ double Calculator::Gamma(double xx) // 浮点数阶乘
 
 }
 
+// 简易表达式计算
 double Calculator::simple_cal(double x, double y, char op) // type of string[k]: char
 {
     if (op == '+')
@@ -112,11 +120,13 @@ double Calculator::simple_cal(double x, double y, char op) // type of string[k]:
     return 0;
 }
 
+
+// 函数计算
 double Calculator::func_cal(double x,string func)
 {
     if(func=="sin") return sin(x);
     if(func=="cos") return cos(x);
-    if(func=="tan") return sin(x);
+    if(func=="tan") return tan(x);
     if(func=="arcsin") return asin(x);
     if(func=="arccos") return acos(x);
     if(func=="arccos") return atan(x);
@@ -131,12 +141,13 @@ double Calculator::func_cal(double x,string func)
 }
 
 
-	
+// 表达式解析为逆波兰式
 void Calculator::parse_expr(string expr)
 {
 	bool func_flag=false;
 	int n=expr.length();
 	int i=0;
+	int func_num=0,num=0; //利用计数器判断，处理函数队列中的多括号情况
 
 	while(i<n)
 	{
@@ -175,15 +186,20 @@ void Calculator::parse_expr(string expr)
 
 			if(func_flag){ S3.push(tmp_num); }
 			else S2.push(tmp_num);
-			cout<<"digit process success"<<endl;
+			// cout<<"digit process success"<<endl;
 	
 		}
 		
 		//处理左括号
 		else if(expr[i]=='('||isalpha(expr[i])) 
 		{
-			if(expr[i]=='(') S1.push('(');
+			if(expr[i]=='(') 
+			{
+				if(num!=func_num)func_num++;
+				S1.push('(');
+			}
 			else{
+				func_num++; // debuged
 				string tmp_func;
 				while(expr[i]!='(')
 				{
@@ -196,6 +212,7 @@ void Calculator::parse_expr(string expr)
 		
 		}
 		
+		// 处理运算符号
 		else if(isop(expr[i]))
 		{
 			if(S1.empty())	S1.push(expr[i]);
@@ -214,30 +231,37 @@ void Calculator::parse_expr(string expr)
 			}
 		}
 		
+		// 处理右括号
 		else if(expr[i]==')')
 		{
+			// cout<<i<<endl;
 			if(!S1.empty())
 			{
 				char tmp=S1.top();
+				// cout<<tmp<<endl;
 				S1.pop();
 
 				while(tmp!='(')
 				{
-						
 					if(func_flag) S3.push(char2string(tmp));
 					else S2.push(char2string(tmp));					
 					tmp=S1.top();
 					S1.pop();
-					cout<<"S1 pop success"<<endl;
+					// cout<<"S1 pop success"<<endl;
 
 				}
-
+				if(func_flag)num++;
 				
 			}
-			if(func_flag)
+			// cout<<"func flag "<<func_flag<<" "<<func_num;
+			if(func_flag&&num==func_num)
 			{
-				S2.push(to_string(cal_repolish(S3))); //double2string
-				func_flag=false;	
+				double x=cal_repolish(S3);
+				if(!S3.empty())	S3.push(to_string(x)); //double2string
+				else{
+					S2.push(to_string(x));
+					func_flag=false;		
+				} 
 			}
 			
 		}
@@ -245,14 +269,14 @@ void Calculator::parse_expr(string expr)
 
 	}
 
-	cout<<"last things"<<endl;
+	// cout<<"last things"<<endl;
 
 	while(!S1.empty())
 	{
 		if(func_flag) S3.push(char2string(S1.top()));
 		else S2.push(char2string(S1.top()));
 		S1.pop();
-		cout<<"S1 pop success"<<endl;
+		// cout<<"S1 pop success"<<endl;
 
 	}
 
@@ -267,48 +291,97 @@ void Calculator::parse_expr(string expr)
 
 }
 
-
-double Calculator::cal_repolish(queue<string> q)
+// 带有函数的逆波兰表达式计算
+double Calculator::cal_repolish(queue<string>& q)
 {
+	// 计算函数队列中的逆波兰表达式
 	string func;
     bool flag = false;
+    int func_num=0;
+    int num=0;
+    int qsize=q.size();
+    queue<string> tmpq;
     stack<double> S;
-    while (!q.empty())
+    for(int i=0;i<qsize;i++)
+    {
+    	string tmp = q.front();
+    	if (isalpha(tmp[0]))
+        {
+        	func_num++;
+        }
+        q.push(tmp);
+        q.pop();
+    }
+    if(func_num>0)flag=true;
+    int l=0;
+    // cout<<func_num<<" ";
+    while (l<qsize&&!q.empty())
     {
         string tmp = q.front();
-
-        cout << tmp << endl;
+        // cout<<tmp<<endl;
+        l++;
         q.pop();
+
         if (isdigit(tmp[0])||(tmp[0]=='-'&&isdigit(tmp[1])))
         {
-            if (tmp[tmp.length() - 1] == '!')
+            if(func_num==num)
             {
-                S.push(Gamma(stod(tmp)));
+            	if (tmp[tmp.length() - 1] == '!')
+	            {
+	                S.push(Gamma(stod(tmp)));
+	            }
+	            else
+	                S.push(stod(tmp));
             }
             else
-                S.push(stod(tmp));
+            	q.push(tmp);
+            
         }
         else if (isalpha(tmp[0]))
         {
-            func=tmp;
-            flag=true;
-            continue;   
+        	// tmpq.push(tmp);
+        	num++;
+        	if(func_num==num)
+        	{
+	            func=tmp;
+        	}
+            else
+            	q.push(tmp);
+               
         }
         else if(isop(tmp[0]))
         {
-            double tmpr = S.top();
-            S.pop();
-            double tmpl = S.top();
-            S.pop();
-            S.push(simple_cal(tmpl,tmpr, tmp[0]));
+            if(func_num==num)
+            {
+            	double tmpr = S.top();
+	            S.pop();
+	            double tmpl = S.top();
+	            S.pop();
+	            S.push(simple_cal(tmpl,tmpr, tmp[0]));
+            }
+            else{
+            	q.push(tmp);
+            }
+            // cout<<"S.top: "<<S.top()<<endl;
         }
 
     }
-    if(flag) return func_cal(S.top(),func);
-    return S.top();
+
+    double x;
+    // cout<<Gamma(4)<<endl;
+	if(flag)
+	{
+    	x=func_cal(S.top(),func);
+	}
+ 	   
+    else
+    	x=S.top();
+    
+
+	return x;
 }
 
-
+// 计算器计算
 void Calculator::calculate()
 {
 	if(!verify(_input)) {
@@ -318,4 +391,5 @@ void Calculator::calculate()
 	parse_expr(_input);
 
 	_output = cal_repolish(S2);
+	cout<<"Calculate success"<<endl;
 }
